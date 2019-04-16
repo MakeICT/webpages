@@ -2,7 +2,7 @@ from flask import render_template, flash, request, redirect, url_for, send_from_
 from werkzeug.utils import secure_filename
 from flask_api import status
 import os
-
+import json
 
 from webpages import app, db
 from webpages.models import FileInfo
@@ -17,13 +17,6 @@ WA_API = WaApiClient()
 
 config = configparser.SafeConfigParser()
 config.read('config.ini')
-
-selected_file = None
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-           # filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route("/")
@@ -52,6 +45,7 @@ def upcoming_events():
             start_date = WA_API.WADateToDateTime(event['StartDate'])
             if 'test' not in event['Name'].lower():
                 event_list.append({
+                                    "Id": event["Id"],
                                     "Name":event['Name'],
                                     "Date": start_date.strftime('%b %d'),
                                     "Time": start_date.strftime('%I:%M %p'),
@@ -65,53 +59,18 @@ def upcoming_events():
 
     return render_template('events.html', events=event_list)
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'],
-                               filename)
+@app.route("/event/<eventId>")
+def event_details(eventId):
+    while(not WA_API.ConnectAPI(config['api']["key"])):
+        time.sleep(5)
 
-@app.route('/check_file/<filename>')
-def check_file(filename):
-    if filename in os.listdir('./uploads'):
-        return "Found file: " + filename, status.HTTP_200_OK
-    else:
-        return "File not found", status.HTTP_404_NOT_FOUND
+    event = WA_API.GetEventByID(eventId)
 
-@app.route('/set_active_file/<filename>', methods=['POST'])
-def set_active_file(filename):
-    if filename == None or check_file(filename)[1] == status.HTTP_200_OK:
-        db.session.add(FileInfo(selected_file = filename))
-        db.session.commit()
-        print("setting active file:",filename)
-        return "OKAY", status.HTTP_200_OK
+    event_details = {
+        "Description": event["Details"]["DescriptionHtml"],
+        "Instructor": [tag.split(':')[1] for tag in event["Tags"]][0],
+    }
 
-    else:
-        return "File not found", status.HTTP_404_NOT_FOUND
+    print(event_details)
 
-@app.route('/get_active_file')
-def get_active_file():
-    print("returning active file")
-    try:
-        file = FileInfo.query.all()[-1].selected_file
-    except:
-        file = "No file selected"
-    if file == None:
-        file = "No file selected"
-    return file, status.HTTP_200_OK
-
-@app.route('/delete/<filename>', methods=['POST'])
-def delete_file(filename):
-    if filename in os.listdir('./uploads'):
-        if(allowed_file(filename)):
-            os.remove("./uploads/" + filename)
-            print(get_active_file())
-            if filename == get_active_file()[0]:
-                print("setting active file to None")
-                set_active_file(None)
-    return redirect(url_for('upload_file'))
-
-@app.route('/delete_all', methods=['POST'])
-def delete_all():
-    for file in os.listdir('./uploads'):
-        delete_file(file)
-    return redirect(url_for('upload_file'))
+    return json.dumps(event_details)

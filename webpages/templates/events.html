@@ -5,94 +5,69 @@
 {% block header %}Upcoming Events{% endblock header %}
 
 {% block head %}
-  <script type="text/javascript">
-    var selected = null
+  <script>
+    // var app = angular.module("myApp", []);
 
-    function get_selected() {
-      return fetch("get_active_file")
-        .then(function(res){
-          return res.text();
-        }).then(function(text){
-          var new_selected = "card-"+text;
-          show_active(new_selected);
-          selected = new_selected;
-          console.log(selected);
-          return text;
-        });
-    }
+    myApp.controller("myCtrl", function($scope) {
+      $scope.test = "hello world!";
+    });
 
-    function set_selected(obj) {
-      // console.log(obj.textContent.trim());
-      var last_selected = document.getElementById("card-" + selected);
-      show_active(obj.id);
+    myApp.controller("eventCtrl", function($scope) {
+      $scope.showDetails = false;
+      $scope.details = "";
 
-      var selected = obj.textContent.trim();
-      console.log(selected);
-      var r = fetch("set_active_file/"+selected, {method:"POST"})
-          .then(function(response){
-              console.log("fetch response");
-                if(response.ok) {
-                    console.log("OKAY");
-                    console.log(response);
-                    window.location.href = '/';
-                }
-                else{
-                  console.log("NOT OKAY");
-                  window.location.reload();
-                }
-              });
-    }
+      $scope.toggleDetailDisplay = function(event) {
+        $scope.showDetails = !$scope.showDetails;
 
-    function show_active(element_id) {
-      var active_element = document.getElementById(element_id);
-      if(selected) {
-        if(document.getElementById(selected) != null) {
-          document.getElementById(selected).classList.remove("border-success");
-          document.getElementById(selected).classList.remove("border-success");
-        }
-        document.getElementById(element_id).classList.add("bg-success");
-      }
-      else if(active_element) {
-        active_element.classList.add("border-success");
-      }
-    }
-
-    function show_delete(element_id) {
-      document.getElementById(element_id).classList.add("bg-danger");
-    }
-
+        if ($scope.details == "") {
+          $scope.details = "Fetching Details";
+          console.log(event["Id"]);
+          fetch("event/" + event["Id"])
+            .then(function(res){
+              return res.text();
+            }).then(function(text){
+              // console.log(text);
+              var event_json = JSON.parse(text);
+              console.log(event_json);
+              $scope.details = event_json["Description"];
+              $scope.$digest();
+            });
+            };
+};
+    });
   </script>
 {% endblock head %}
 
-
-
 {% block content %}
-  <body onload="get_selected()">
+  <body ng-app="myApp"  ng-controller="myCtrl" ng-init="events = {{ events }}">
+  <!-- [[ events ]] -->
 
-  {% if events %}
-    {{ last_date }}
-    {% for event in events %}
-          <div class="card my-1 py-0" onclick="set_selected(this)"> 
-            <h5 class="card-header"> Apr 17 </h5>
+<!--   <ul ng-repeat="(key, value) in events | groupBy: 'Date'">
+    Group name: [[ key ]]
+    <li ng-repeat="event in value">
+      event: [[ event.Name ]] 
+    </li>
+  </ul> -->
 
-      <div class="card my-1 py-0 mx-1" onclick="set_selected(this)"> 
-        <h5 class="card-header"> {{ event["Date"] }} | {{ event["Time"]}} | {{ event["Name"] }}
-          <button class= "btn btn-primary float-right mx-2" target="_blank">+</button>
-          <a class= "btn btn-primary float-right" href= "{{ event['Register'] }}" target="_blank">Register</a>
-        </h5>
-<!--         <div class="card-body">
-          <div class="d-flex align-items-center flex-row">
-            <div class="mr-auto w-75">
-              {{ event }}
+    {% if events %}
+      {% for event in events %}
+        <div ng-if="1" class="card my-1 py-0"> 
+          <h5 ng-if="1"class="card-header"> {{ event["Date" ] }} </h5>
+
+          <div class="card my-1 py-0 mx-1" ng-controller = "eventCtrl"> 
+            <h5 class="card-header"> {{ event["Time"]}} | {{ event["Name"] }}
+              <button class= "btn btn-primary float-right mx-2" ng-click="toggleDetailDisplay({{ event }})" target="_blank">+</button>
+              <a class= "btn btn-primary float-right" href= "{{ event['Register'] }}" target="_blank">Register</a>
+            </h5>
+            <div class="card-body" ng-if="showDetails">
+              <div class="d-flex align-items-center flex-row">
+                <div ng-bind="details">
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <hr>
-        <div class="card-body">
-          test
-        </div> -->
-</div>
-      </div>
-    {% endfor %}
-  {% endif %}
+      {% endfor %}
+    {% endif %}
+  </body>
 {% endblock content %}
