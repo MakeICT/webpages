@@ -47,7 +47,7 @@ def upcoming_events():
                 event_list.append({
                                     "Id": event["Id"],
                                     "Name":event['Name'],
-                                    "Date": start_date.strftime('%b %d'),
+                                    "Date": start_date.strftime('%b %d %Y'),
                                     "Time": start_date.strftime('%I:%M %p'),
                                     "Register":"http://makeict.wildapricot.org/event-" + str(event['Id']),
                                   })
